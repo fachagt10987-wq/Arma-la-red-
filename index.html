@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ARMÁ LA RED - Juego Educativo de Redes Cloacales</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            user-select: none;
+            background-color: #0f172a;
+        }
+        h1, h2, h3, .font-heading {
+            font-family: 'Space Grotesk', sans-serif;
+        }
+
+        .card-item {
+            touch-action: none;
+            cursor: grab;
+            transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.2s ease;
+        }
+        .card-item:active {
+            cursor: grabbing;
+            transform: scale(1.03);
+            z-index: 50;
+        }
+
+        .drop-slot {
+            transition: all 0.2s ease;
+        }
+        .drop-slot.drag-over {
+            border-color: #38bdf8;
+            background-color: rgba(56, 189, 248, 0.15);
+            transform: scale(1.02);
+        }
+
+        /* Estilos de validación */
+        .slot-correct {
+            border-color: #22c55e !important;
+            background-color: rgba(34, 197, 94, 0.2) !important;
+        }
+        .slot-incorrect {
+            border-color: #ef4444 !important;
+            background-color: rgba(239, 68, 68, 0.2) !important;
+        }
+
+        .pipe-connector {
+            position: relative;
+        }
+        .pipe-connector::after {
+            content: '⬇';
+            position: absolute;
+            bottom: -16px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #64748b;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        @media (min-width: 1024px) {
+            .pipe-connector::after {
+                content: '→';
+                right: -14px;
+                top: 50%;
+                left: auto;
+                bottom: auto;
+                transform: translateY(-50%);
+            }
+        }
+    </style>
+</head>
+<body class="text-slate-100 min-h-screen flex flex-col justify-between overflow-x-hidden">
+
+    <!-- Encabezado Principal -->
+    <header class="bg-slate-900 border-b border-slate-800 py-4 px-6 shadow-xl sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="bg-amber-600 text-slate-950 p-2.5 rounded-xl font-black text-2xl shadow-lg border border-amber-400/30">
+                    🛠️
+                </div>
+                <div>
+                    <h1 class="text-2xl sm:text-3xl font-black tracking-tight text-amber-400">ARMÁ LA RED</h1>
+                    <p class="text-xs text-slate-400 font-semibold uppercase tracking-wider">Simulador Técnico de Redes Cloacales</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <button onclick="changePhase('instructions')" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-bold border border-slate-700 transition">
+                    📋 Instrucciones
+                </button>
+                <button onclick="resetGame()" class="px-3 py-2 bg-rose-600/80 hover:bg-rose-600 text-white rounded-lg text-xs font-bold border border-rose-500 transition">
+                    🔄 Reiniciar
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Marcador Global para Equipos Temáticos -->
+    <section class="bg-slate-800/90 border-b border-slate-700 py-3 px-4 sm:px-8 shadow-inner">
+        <div class="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-3">
+            
+            <div id="scoreCard-1" class="bg-slate-900/90 border-2 border-blue-500/80 rounded-xl p-2.5 flex justify-between items-center shadow-md">
+                <div class="flex items-center gap-2">
+                    <span class="w-3 h-3 rounded-full bg-blue-500 flex-shrink-0"></span>
+                    <span class="font-bold text-xs sm:text-sm text-blue-300 truncate">Eq. 1: Los Colectores</span>
+                </div>
+                <div class="flex items-center gap-1">
+                    <span id="score-team-1" class="text-2xl font-black text-white font-mono">0</span>
+                    <span class="text-[10px] text-slate-400 font-bold uppercase">pts</span>
+                </div>
+            </div>
+
+            <div id="scoreCard-2" class="bg-slate-900/90 border-2 border-emerald-500/80 rounded-xl p-2.5 flex justify-between items-center shadow-md">
+                <div class="flex items-center gap-2">
+                    <span class="w-3 h-3 rounded-full bg-emerald-500 flex-shrink-0"></span>
+                    <span class="font-bold text-xs sm:text-sm text-emerald-300 truncate">Eq. 2: Ing. Bombeo</span>
+                </div>
+                <div class="flex items-center gap-1">
+                    <span id="score-team-2" class="text-2xl font-black text-white font-mono">0</span>
+                    <span class="text-[10px] text-slate-400 font-bold uppercase">pts</span>
+                </div>
+            </div>
+
+            <div id="scoreCard-3" class="bg-slate-900/90 border-2 border-amber-500/80 rounded-xl p-2.5 flex justify-between items-center shadow-md">
+                <div class="flex items-center gap-2">
+                    <span class="w-3 h-3 rounded-full bg-amber-500 flex-shrink-0"></span>
+                    <span class="font-bold text-xs sm:text-sm text-amber-300 truncate">Eq. 3: Planta Tratamiento</span>
+                </div>
+                <div class="flex items-center gap-1">
+                    <span id="score-team-3" class="text-2xl font-black text-white font-mono">0</span>
+                    <span class="text-[10px] text-slate-400 font-bold uppercase">pts</span>
+                </div>
+            </div>
+
+            <div id="scoreCard-4" class="bg-slate-900/90 border-2 border-purple-500/80 rounded-xl p-2.5 flex justify-between items-center shadow-md">
+                <div class="flex items-center gap-2">
+                    <span class="w-3 h-3 rounded-full bg-purple-500 flex-shrink-0"></span>
+                    <span class="font-bold text-xs sm:text-sm text-purple-300 truncate">Eq. 4: Gestión Ambiental</span>
+                </div>
+                <div class="flex items-center gap-1">
+                    <span id="score-team-4" class="text-2xl font-black text-white font-mono">0</span>
+                    <span class="text-[10px] text-slate-400 font-bold uppercase">pts</span>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- ÁREA PRINCIPAL -->
+    <main class="max-w-7xl mx-auto w-full p-4 sm:p-6 flex-grow">
+
+        <!-- VISTA 0: INSTRUCCIONES -->
+        <section id="phase-instructions" class="bg-slate-800/80 border border-slate-700 rounded-2xl p-6 sm:p-10 shadow-2xl max-w-4xl mx-auto my-4">
+            <div class="text-center mb-6">
+                <span class="bg-amber-500/20 text-amber-400 border border-amber-500/30 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">Simulador por Tiempo</span>
+                <h2 class="text-3xl sm:text-4xl font-black text-white mt-3">Desafío Técnico de Redes Cloacales</h2>
+                <p class="text-slate-300 text-sm mt-2 max-w-2xl mx-auto">
+                    Cada equipo dispone de **2 minutos** por turno para ordenar la red. Al comprobar o acabarse el tiempo, los casilleros mostrarán **verde** (correcto) o **rojo** (incorrecto). ¡Pueden seguir reordenando sin perder el avance!
+                </p>
+            </div>
+
+            <div class="text-center">
+                <button onclick="startGame()" class="px-8 py-4 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-lg rounded-2xl shadow-xl transition transform hover:scale-105 active:scale-95">
+                    🚀 Comenzar Desafío
+                </button>
+            </div>
+        </section>
+
+        <!-- VISTA 1: FASE DE ORDENAMIENTO Y CRONÓMETRO -->
+        <section id="phase-ordering" class="hidden flex-col gap-6">
+            
+            <div class="flex flex-wrap justify-between items-center gap-4 border-b border-slate-800 pb-3">
+                <!-- Selector de Pestañas de Equipos Temáticos -->
+                <div class="flex flex-wrap gap-2" id="teamTabs">
+                    <button onclick="selectTeamTab(1)" id="tab-btn-1" class="px-4 py-2 rounded-xl font-bold text-xs sm:text-sm transition bg-blue-600 text-white shadow-lg border border-blue-400">
+                        Eq. 1: Los Colectores
+                    </button>
+                    <button onclick="selectTeamTab(2)" id="tab-btn-2" class="px-4 py-2 rounded-xl font-bold text-xs sm:text-sm transition bg-slate-800 text-slate-400 border border-slate-700">
+                        Eq. 2: Ing. Bombeo
+                    </button>
+                    <button onclick="selectTeamTab(3)" id="tab-btn-3" class="px-4 py-2 rounded-xl font-bold text-xs sm:text-sm transition bg-slate-800 text-slate-400 border border-slate-700">
+                        Eq. 3: Planta Tratamiento
+                    </button>
+                    <button onclick="selectTeamTab(4)" id="tab-btn-4" class="px-4 py-2 rounded-xl font-bold text-xs sm:text-sm transition bg-slate-800 text-slate-400 border border-slate-700">
+                        Eq. 4: Gestión Ambiental
+                    </button>
+                </div>
+
+                <!-- CRONÓMETRO DE 2 MINUTOS -->
+                <div class="bg-slate-900 border-2 border-amber-500/80 px-4 py-2 rounded-xl flex items-center gap-2 shadow-lg">
+                    <span class="text-xl">⏱️</span>
+                    <div class="text-left">
+                        <span class="text-[9px] font-bold text-slate-400 uppercase block leading-none">Tiempo Turno</span>
+                        <span id="timerDisplay" class="text-2xl font-black font-mono text-amber-400 leading-none">02:00</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-slate-800/60 border border-slate-700 rounded-2xl p-4 sm:p-6 shadow-xl">
+                <div class="flex flex-col sm:flex-row justify-between items-center gap-3 mb-4">
+                    <div>
+                        <h3 id="currentTeamTitle" class="text-xl font-black text-blue-400">Turno: Los Colectores</h3>
+                        <p class="text-xs text-slate-400">Ubica al menos 4 componentes para poder pulsar "Comprobar Orden".</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="checkCurrentTeamOrder(false)" class="px-5 py-2.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl shadow-lg transition">
+                            🔍 Comprobar Orden
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tablero de Construcción de la Red -->
+                <div class="mb-6">
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-3">TRAYECTO DE LA RED CLOACAL:</span>
+                    <div id="dropSlotsContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-3">
+                        <!-- Generado con JS -->
+                    </div>
+                </div>
+
+                <!-- Banco de Tarjetas -->
+                <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-700">
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-3">COMPONENTES DISPONIBLES:</span>
+                    <div id="cardsBankContainer" class="flex flex-wrap gap-2 justify-center min-h-[60px] items-center">
+                        <!-- Generado con JS -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-between items-center mt-2">
+                <p class="text-xs text-slate-400">Al finalizar el tiempo de los 4 equipos, continúen con las preguntas.</p>
+                <button onclick="startQuestionsPhase()" class="px-6 py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-sm rounded-xl shadow-lg transition flex items-center gap-2">
+                    <span>Siguiente Desafío: Preguntas</span> ➔
+                </button>
+            </div>
+
+        </section>
+
+        <!-- VISTA 2: PREGUNTAS -->
+        <section id="phase-questions" class="hidden flex-col gap-6 max-w-4xl mx-auto">
+            <div class="bg-slate-800/90 border border-slate-700 rounded-2xl p-6 shadow-2xl">
+                <div class="flex justify-between items-center mb-4">
+                    <span class="text-xs font-bold bg-amber-500/20 text-amber-400 px-3 py-1 rounded-full border border-amber-500/30">Fase 2: Preguntas Técnicas</span>
+                    <span id="questionProgress" class="text-xs font-mono text-slate-400">Pregunta 1 de 6</span>
+                </div>
+
+                <div class="bg-slate-900/90 p-6 rounded-xl border border-slate-700/80 mb-6">
+                    <h3 id="questionText" class="text-xl sm:text-2xl font-bold text-white leading-snug">Pregunta</h3>
+                </div>
+
+                <div id="questionOptions" class="grid gap-3 mb-6"></div>
+
+                <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-700 flex flex-wrap items-center justify-between gap-4">
+                    <span class="text-xs font-bold text-slate-300">Otorgar punto (+1 pt) al equipo que respondió:</span>
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="addExtraPoint(1)" class="px-2.5 py-1.5 bg-blue-600/80 hover:bg-blue-600 text-white font-bold text-xs rounded-lg">+1 Eq. 1</button>
+                        <button onclick="addExtraPoint(2)" class="px-2.5 py-1.5 bg-emerald-600/80 hover:bg-emerald-600 text-white font-bold text-xs rounded-lg">+1 Eq. 2</button>
+                        <button onclick="addExtraPoint(3)" class="px-2.5 py-1.5 bg-amber-600/80 hover:bg-amber-600 text-white font-bold text-xs rounded-lg">+1 Eq. 3</button>
+                        <button onclick="addExtraPoint(4)" class="px-2.5 py-1.5 bg-purple-600/80 hover:bg-purple-600 text-white font-bold text-xs rounded-lg">+1 Eq. 4</button>
+                    </div>
+                </div>
+
+                <div class="flex justify-between items-center mt-6">
+                    <button onclick="prevQuestion()" id="btnPrevQ" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-xs font-bold rounded-lg disabled:opacity-30">⬅ Anterior</button>
+                    <button onclick="nextQuestion()" id="btnNextQ" class="px-6 py-2.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl">Siguiente ➔</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- VISTA 3: FALLAS -->
+        <section id="phase-failures" class="hidden flex-col gap-6 max-w-4xl mx-auto">
+            <div class="bg-slate-800/90 border border-slate-700 rounded-2xl p-6 sm:p-8 shadow-2xl text-center">
+                <span class="bg-rose-500/20 text-rose-400 border border-rose-500/30 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">Desafío Final</span>
+                <h2 class="text-3xl font-black text-white mt-2">¿Qué pasaría si falla?</h2>
+
+                <div class="my-8 bg-gradient-to-b from-slate-900 to-slate-950 p-8 rounded-2xl border-2 border-rose-500/50 shadow-2xl relative overflow-hidden">
+                    <span class="text-xs font-bold text-rose-400 uppercase tracking-widest block mb-2">COMPONENTE AFECTADO:</span>
+                    <h3 id="failureComponentName" class="text-3xl sm:text-4xl font-black text-amber-400 mb-4">ESTACIÓN DE BOMBEO</h3>
+                    <p id="failurePromptText" class="text-slate-200 text-base max-w-xl mx-auto font-medium">¿Qué impacto tendría su colapso?</p>
+                </div>
+
+                <div class="flex justify-center gap-3 mb-6">
+                    <button onclick="triggerRandomFailure()" class="px-5 py-3 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-lg border border-rose-400">
+                        🎲 Generar Falla Aleatoria
+                    </button>
+                </div>
+
+                <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-700 inline-block w-full max-w-md mx-auto">
+                    <span class="text-xs font-bold text-slate-400 uppercase block mb-2">Asignar Puntos por respuesta (+1 pt):</span>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="addExtraPoint(1)" class="py-2 bg-blue-600/80 text-white font-bold text-xs rounded-lg">+1 Eq. 1</button>
+                        <button onclick="addExtraPoint(2)" class="py-2 bg-emerald-600/80 text-white font-bold text-xs rounded-lg">+1 Eq. 2</button>
+                        <button onclick="addExtraPoint(3)" class="py-2 bg-amber-600/80 text-white font-bold text-xs rounded-lg">+1 Eq. 3</button>
+                        <button onclick="addExtraPoint(4)" class="py-2 bg-purple-600/80 text-white font-bold text-xs rounded-lg">+1 Eq. 4</button>
+                    </div>
+                </div>
+
+                <div class="mt-8 border-t border-slate-700 pt-6">
+                    <button onclick="showFinalResults()" class="px-8 py-4 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-base rounded-2xl shadow-xl transition transform hover:scale-105">
+                        🏆 Resultados Finales
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- VISTA 4: RESULTADOS -->
+        <section id="phase-results" class="hidden flex-col gap-6 max-w-4xl mx-auto">
+            <div class="bg-slate-800/90 border border-slate-700 rounded-2xl p-6 sm:p-10 shadow-2xl text-center">
+                <span class="text-5xl block mb-2">🏆</span>
+                <h2 class="text-3xl sm:text-4xl font-black text-amber-400 mb-2">¡Desafío Completado!</h2>
+                
+                <div id="finalLeaderboard" class="grid gap-3 mb-8 max-w-md mx-auto"></div>
+
+                <div class="mt-8">
+                    <button onclick="resetGame()" class="px-6 py-3 bg-slate-700 hover:bg-slate-600 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition">
+                        🔄 Iniciar Nueva Partida
+                    </button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Modal -->
+    <div id="gameModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-800 border-2 border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl text-center">
+            <div id="modalIcon" class="text-5xl mb-2">📢</div>
+            <h3 id="modalTitle" class="text-xl font-bold text-white mb-2">Mensaje</h3>
+            <p id="modalMessage" class="text-xs text-slate-300 mb-6 leading-relaxed"></p>
+            <button onclick="closeModal()" class="w-full py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl text-xs uppercase tracking-wider">
+                Entendido
+            </button>
+        </div>
+    </div>
+
+    <!-- JS -->
+    <script>
+        const TEAM_NAMES = {
+            1: "Los Colectores",
+            2: "Ingeniería de Bombeo",
+            3: "Planta de Tratamiento",
+            4: "Gestión Ambiental"
+        };
+
+        const CORRECT_ORDER = [
+            "VIVIENDA",
+            "CONEXIÓN CLOACAL",
+            "CAÑERÍAS CLOACALES",
+            "COLECTOR CLOACAL",
+            "ESTACIÓN DE BOMBEO",
+            "PLANTA DE TRATAMIENTO",
+            "DISPOSICIÓN O REUTILIZACIÓN"
+        ];
+
+        const COMPONENT_ICONS = {
+            "VIVIENDA": "🏠",
+            "CONEXIÓN CLOACAL": "🔌",
+            "CAÑERÍAS CLOACALES": "🛠️",
+            "COLECTOR CLOACAL": "🌊",
+            "ESTACIÓN DE BOMBEO": "⚙️",
+            "PLANTA DE TRATAMIENTO": "🏭",
+            "DISPOSICIÓN O REUTILIZACIÓN": "🌱"
+        };
+
+        const QUESTIONS_BANK = [
+            { q: "¿Qué función cumple la conexión cloacal?", options: ["Vincular las cañerías internas con la red pública.", "Tratar químicamente los efluentes.", "Aumentar la presión del agua."], correct: 0 },
+            { q: "¿Para qué sirven las cañerías cloacales?", options: ["Almacenar agua de lluvia.", "Transportar efluentes por gravedad o pendiente.", "Filtrar bacterias."], correct: 1 },
+            { q: "¿Qué función cumple el colector cloacal?", options: ["Reunir los caudales de múltiples redes secundarias.", "Inyectar cloro a alta presión.", "Distribuir agua limpia."], correct: 0 },
+            { q: "¿Cuándo es necesaria una estación de bombeo?", options: ["Solo ante cortes eléctricos.", "Cuando la topografía requiere elevar los efluentes.", "Para airear casas."], correct: 1 },
+            { q: "¿Qué ocurre en una planta de tratamiento?", options: ["Se potabiliza para consumo humano directo.", "Se purifican efluentes removiendo contaminantes.", "Se embotella agua."], correct: 1 },
+            { q: "¿Por qué es fundamental tratar las aguas residuales?", options: ["Evitar contaminación de ríos y prevenir enfermedades.", "Solo por estética urbana.", "Reducir sal en los ríos."], correct: 0 }
+        ];
+
+        const FAILURES_BANK = [
+            { component: "CAÑERÍAS CLOACALES", prompt: "Si se obstruyen las cañerías de la calle, ¿qué ocurre?" },
+            { component: "ESTACIÓN DE BOMBEO", prompt: "Si falla la bomba en una zona baja, ¿qué anegamientos provoca?" },
+            { component: "PLANTA DE TRATAMIENTO", prompt: "Si la planta vuelca efluentes sin tratar, ¿qué impacto genera?" }
+        ];
+
+        let teamScores = { 1: 0, 2: 0, 3: 0, 4: 0 };
+        let teamOrders = { 1: Array(7).fill(null), 2: Array(7).fill(null), 3: Array(7).fill(null), 4: Array(7).fill(null) };
+        let teamBanks = { 1: [], 2: [], 3: [], 4: [] };
+        let teamValidation = { 1: null, 2: null, 3: null, 4: null };
+
+        let currentActiveTeam = 1;
+        let currentQuestionIdx = 0;
+        let selectedCardToPlace = null;
+
+        // Cronómetro Variables
+        let timerInterval = null;
+        let timeLeft = 120; // 2 minutos en segundos
+
+        function initData() {
+            teamScores = { 1: 0, 2: 0, 3: 0, 4: 0 };
+            teamValidation = { 1: null, 2: null, 3: null, 4: null };
+            for (let t = 1; t <= 4; t++) {
+                teamOrders[t] = Array(7).fill(null);
+                teamBanks[t] = shuffleArray([...CORRECT_ORDER]);
+            }
+            currentActiveTeam = 1;
+            currentQuestionIdx = 0;
+            updateScoreboardDisplay();
+        }
+
+        function shuffleArray(array) {
+            let arr = [...array];
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            return arr;
+        }
+
+        function updateScoreboardDisplay() {
+            for (let t = 1; t <= 4; t++) {
+                document.getElementById(`score-team-${t}`).innerText = teamScores[t];
+            }
+        }
+
+        function changePhase(phaseId) {
+            clearInterval(timerInterval);
+            document.getElementById('phase-instructions').classList.add('hidden');
+            document.getElementById('phase-ordering').classList.add('hidden');
+            document.getElementById('phase-questions').classList.add('hidden');
+            document.getElementById('phase-failures').classList.add('hidden');
+            document.getElementById('phase-results').classList.add('hidden');
+
+            const target = document.getElementById(`phase-${phaseId}`);
+            if (target) {
+                target.classList.remove('hidden');
+                target.classList.add('flex');
+            }
+        }
+
+        function startGame() {
+            initData();
+            changePhase('ordering');
+            selectTeamTab(1);
+        }
+
+        function resetGame() {
+            if (confirm("¿Deseas reiniciar completamente la partida?")) {
+                clearInterval(timerInterval);
+                initData();
+                changePhase('instructions');
+            }
+        }
+
+        /* --- CONTROL DE CRONÓMETRO DE 2 MINUTOS --- */
+        function startTimer() {
+            clearInterval(timerInterval);
+            timeLeft = 120;
+            updateTimerDisplay();
+
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                updateTimerDisplay();
+
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    showModal("⏱️ ¡Tiempo Agotado!", `El tiempo del Equipo ${currentActiveTeam} (${TEAM_NAMES[currentActiveTeam]}) ha finalizado. Se evaluará automáticamente su avance.`, "⏳");
+                    checkCurrentTeamOrder(true);
+                }
+            }, 1000);
+        }
+
+        function updateTimerDisplay() {
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            const formatted = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            document.getElementById('timerDisplay').innerText = formatted;
+        }
+
+        /* --- SELECCIÓN DE PESTAÑAS --- */
+        function selectTeamTab(teamNum) {
+            currentActiveTeam = teamNum;
+            selectedCardToPlace = null;
+
+            const teamColors = {
+                1: { bg: 'bg-blue-600', border: 'border-blue-400', text: 'text-blue-400' },
+                2: { bg: 'bg-emerald-600', border: 'border-emerald-400', text: 'text-emerald-400' },
+                3: { bg: 'bg-amber-600', border: 'border-amber-400', text: 'text-amber-400' },
+                4: { bg: 'bg-purple-600', border: 'border-purple-400', text: 'text-purple-400' }
+            };
+
+            for (let t = 1; t <= 4; t++) {
+                const btn = document.getElementById(`tab-btn-${t}`);
+                if (t === teamNum) {
+                    btn.className = `px-4 py-2 rounded-xl font-bold text-xs sm:text-sm transition ${teamColors[t].bg} text-white shadow-lg border ${teamColors[t].border}`;
+                } else {
+                    btn.className = 'px-4 py-2 rounded-xl font-bold text-xs sm:text-sm transition bg-slate-800 text-slate-400 border border-slate-700 hover:bg-slate-700';
+                }
+            }
+
+            const title = document.getElementById('currentTeamTitle');
+            title.innerText = `Turno: ${TEAM_NAMES[teamNum]}`;
+            title.className = `text-xl font-black ${teamColors[teamNum].text}`;
+
+            renderOrderingBoard();
+            startTimer();
+        }
+
+        function renderOrderingBoard() {
+            const slotsContainer = document.getElementById('dropSlotsContainer');
+            const bankContainer = document.getElementById('cardsBankContainer');
+            
+            slotsContainer.innerHTML = '';
+            bankContainer.innerHTML = '';
+
+            const currentSlots = teamOrders[currentActiveTeam];
+            const currentBank = teamBanks[currentActiveTeam];
+            const currentVal = teamValidation[currentActiveTeam];
+
+            // Renderizar casilleros con resaltado Verde / Rojo si ya se comprobó
+            for (let i = 0; i < 7; i++) {
+                const item = currentSlots[i];
+                const slotDiv = document.createElement('div');
+                
+                let validationClass = "";
+                if (currentVal) {
+                    validationClass = currentVal[i] ? "slot-correct" : "slot-incorrect";
+                }
+
+                slotDiv.className = `drop-slot border-2 border-dashed border-slate-700 rounded-xl p-2.5 flex flex-col items-center justify-center min-h-[90px] bg-slate-900/50 relative pipe-connector ${item ? 'border-cyan-500/60 bg-slate-800/90' : ''} ${validationClass}`;
+                slotDiv.dataset.index = i;
+
+                slotDiv.ondragover = (e) => { e.preventDefault(); slotDiv.classList.add('drag-over'); };
+                slotDiv.ondragleave = () => slotDiv.classList.remove('drag-over');
+                slotDiv.ondrop = (e) => handleDrop(e, i);
+                slotDiv.onclick = () => handleSlotClick(i);
+
+                if (item) {
+                    slotDiv.innerHTML = `
+                        <span class="text-xs font-bold text-cyan-400 mb-1">Paso ${i + 1}</span>
+                        <div class="card-item bg-slate-800 border border-slate-600 rounded-lg p-2 w-full text-center shadow-md flex items-center justify-center gap-1.5">
+                            <span class="text-base">${COMPONENT_ICONS[item]}</span>
+                            <span class="text-[11px] font-bold text-white leading-tight">${item}</span>
+                        </div>
+                    `;
+                } else {
+                    slotDiv.innerHTML = `
+                        <span class="text-xs font-bold text-slate-500 mb-1">Paso ${i + 1}</span>
+                        <span class="text-[10px] text-slate-600 font-semibold">[ Vacío ]</span>
+                    `;
+                }
+
+                slotsContainer.appendChild(slotDiv);
+            }
+
+            // Banco de tarjetas
+            currentBank.forEach((cardName) => {
+                const cardBtn = document.createElement('div');
+                cardBtn.draggable = true;
+                cardBtn.className = `card-item bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-xl px-3 py-2 text-center shadow-md flex items-center gap-2 ${selectedCardToPlace === cardName ? 'ring-2 ring-amber-400 bg-slate-700' : ''}`;
+                cardBtn.innerHTML = `
+                    <span class="text-lg">${COMPONENT_ICONS[cardName]}</span>
+                    <span class="text-xs font-bold text-slate-200">${cardName}</span>
+                `;
+
+                cardBtn.ondragstart = (e) => e.dataTransfer.setData("text/plain", cardName);
+                cardBtn.onclick = () => {
+                    selectedCardToPlace = (selectedCardToPlace === cardName) ? null : cardName;
+                    renderOrderingBoard();
+                };
+
+                bankContainer.appendChild(cardBtn);
+            });
+        }
+
+        function handleDrop(e, slotIndex) {
+            e.preventDefault();
+            const cardName = e.dataTransfer.getData("text/plain");
+            if (cardName) placeCardInSlot(cardName, slotIndex);
+        }
+
+        function handleSlotClick(slotIndex) {
+            if (selectedCardToPlace) {
+                placeCardInSlot(selectedCardToPlace, slotIndex);
+                selectedCardToPlace = null;
+            } else if (teamOrders[currentActiveTeam][slotIndex]) {
+                removeCardFromSlot(slotIndex);
+            }
+        }
+
+        function placeCardInSlot(cardName, slotIndex) {
+            const currentSlots = teamOrders[currentActiveTeam];
+            const currentBank = teamBanks[currentActiveTeam];
+
+            if (currentSlots[slotIndex]) currentBank.push(currentSlots[slotIndex]);
+            const bankIdx = currentBank.indexOf(cardName);
+            if (bankIdx !== -1) currentBank.splice(bankIdx, 1);
+
+            currentSlots[slotIndex] = cardName;
+            
+            // Si cambian tarjetas, resetea la validación de colores para permitir reintentar limpiamente
+            teamValidation[currentActiveTeam] = null;
+            renderOrderingBoard();
+        }
+
+        function removeCardFromSlot(slotIndex) {
+            const currentSlots = teamOrders[currentActiveTeam];
+            const currentBank = teamBanks[currentActiveTeam];
+
+            if (currentSlots[slotIndex]) {
+                currentBank.push(currentSlots[slotIndex]);
+                currentSlots[slotIndex] = null;
+                teamValidation[currentActiveTeam] = null;
+                renderOrderingBoard();
+            }
+        }
+
+        /* --- COMPROBACIÓN DE ORDEN, PUNTOS Y PENALIZACIÓN DE TIEMPO --- */
+        function checkCurrentTeamOrder(isAutoTimeOut = false) {
+            const slots = teamOrders[currentActiveTeam];
+            const placedCount = slots.filter(item => item !== null).length;
+
+            // Validación de mínimo 4 colocados para poder revisar manualmente
+            if (!isAutoTimeOut && placedCount < 4) {
+                showModal("Atención", "Deben colocar al menos 4 componentes en la red antes de comprobar.", "⚠️");
+                return;
+            }
+
+            let correctCount = 0;
+            let errorsCount = 0;
+            let validationResults = [];
+
+            for (let i = 0; i < 7; i++) {
+                const isCorrect = (slots[i] === CORRECT_ORDER[i]);
+                validationResults.push(isCorrect);
+                if (isCorrect) {
+                    correctCount++;
+                } else if (slots[i] !== null) {
+                    errorsCount++;
+                }
+            }
+
+            // Guardar estado visual (Verde/Rojo)
+            teamValidation[currentActiveTeam] = validationResults;
+            renderOrderingBoard();
+
+            // Lógica de Penalización de tiempo (Si hay de 1 a 3 errores, baja a 1 minuto)
+            if (!isAutoTimeOut && errorsCount >= 1 && errorsCount <= 3) {
+                if (timeLeft > 60) {
+                    timeLeft = 60;
+                    updateTimerDisplay();
+                    showModal("⚠️ Penalización de Tiempo", `Tienen ${errorsCount} error(es). El reloj bajó a 1 MINUTO para corregir.`, "⏱️");
+                }
+            }
+
+            // Asignación de Puntos según avance
+            let pts = 0;
+            if (correctCount === 7) pts = 3;
+            else if (correctCount >= 4) pts = 2;
+            else if (correctCount >= 1) pts = 1;
+
+            teamScores[currentActiveTeam] = pts;
+            updateScoreboardDisplay();
+
+            if (!isAutoTimeOut) {
+                let msg = `Tienen ${correctCount} de 7 componentes correctos (Verde). Puntos asignados: ${pts}. ¡Pueden cambiar el orden para corregir los rojos!`;
+                showModal(`Evaluación: ${TEAM_NAMES[currentActiveTeam]}`, msg, correctCount === 7 ? "🎉" : "🔍");
+            }
+        }
+
+        /* --- FASE 2: PREGUNTAS --- */
+        function startQuestionsPhase() {
+            changePhase('questions');
+            currentQuestionIdx = 0;
+            renderQuestion();
+        }
+
+        function renderQuestion() {
+            const qData = QUESTIONS_BANK[currentQuestionIdx];
+            document.getElementById('questionProgress').innerText = `Pregunta ${currentQuestionIdx + 1} de ${QUESTIONS_BANK.length}`;
+            document.getElementById('questionText').innerText = qData.q;
+
+            const optionsContainer = document.getElementById('questionOptions');
+            optionsContainer.innerHTML = '';
+
+            qData.options.forEach((optText, idx) => {
+                const btn = document.createElement('button');
+                btn.className = "p-4 text-left rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-sm font-semibold transition flex items-center justify-between";
+                btn.innerHTML = `<span>${optText}</span><span class="text-slate-500 font-mono text-xs">[ Opción ${idx + 1} ]</span>`;
+                btn.onclick = () => evaluateOption(idx);
+                optionsContainer.appendChild(btn);
+            });
+
+            document.getElementById('btnPrevQ').disabled = (currentQuestionIdx === 0);
+        }
+
+        function evaluateOption(selectedIdx) {
+            const qData = QUESTIONS_BANK[currentQuestionIdx];
+            if (selectedIdx === qData.correct) {
+                showModal("¡Correcto!", "Respuesta técnicamente correcta. Otorga +1 pt al equipo que la respondió.", "✅");
+            } else {
+                showModal("Incorrecto", "La respuesta no es adecuada. Revisen el concepto.", "❌");
+            }
+        }
+
+        function prevQuestion() {
+            if (currentQuestionIdx > 0) {
+                currentQuestionIdx--;
+                renderQuestion();
+            }
+        }
+
+        function nextQuestion() {
+            if (currentQuestionIdx < QUESTIONS_BANK.length - 1) {
+                currentQuestionIdx++;
+                renderQuestion();
+            } else {
+                startFailuresPhase();
+            }
+        }
+
+        function addExtraPoint(teamNum) {
+            teamScores[teamNum] += 1;
+            updateScoreboardDisplay();
+        }
+
+        /* --- FASE 3: FALLAS --- */
+        function startFailuresPhase() {
+            changePhase('failures');
+            triggerRandomFailure();
+        }
+
+        function triggerRandomFailure() {
+            const randomItem = FAILURES_BANK[Math.floor(Math.random() * FAILURES_BANK.length)];
+            document.getElementById('failureComponentName').innerText = randomItem.component;
+            document.getElementById('failurePromptText').innerText = randomItem.prompt;
+        }
+
+        /* --- FASE 4: RESULTADOS --- */
+        function showFinalResults() {
+            changePhase('results');
+            const leaderboard = document.getElementById('finalLeaderboard');
+            leaderboard.innerHTML = '';
+
+            const sortedTeams = [1, 2, 3, 4].sort((a, b) => teamScores[b] - teamScores[a]);
+
+            sortedTeams.forEach((teamNum, rank) => {
+                const item = document.createElement('div');
+                item.className = `bg-slate-900 border-2 border-slate-700 p-3.5 rounded-xl flex justify-between items-center shadow-lg`;
+                item.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <span class="font-black text-lg w-6 text-amber-400">${rank + 1}º</span>
+                        <span class="font-bold text-sm text-slate-200">${TEAM_NAMES[teamNum]}</span>
+                    </div>
+                    <span class="font-black text-2xl font-mono text-white">${teamScores[teamNum]} <span class="text-xs text-slate-400">pts</span></span>
+                `;
+                leaderboard.appendChild(item);
+            });
+        }
+
+        function showModal(title, message, icon = "📢") {
+            document.getElementById('modalTitle').innerText = title;
+            document.getElementById('modalMessage').innerText = message;
+            document.getElementById('modalIcon').innerText = icon;
+            document.getElementById('gameModal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('gameModal').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
